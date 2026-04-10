@@ -25,10 +25,10 @@ JavaScript that treats the browser as a systems platform. No bundlers, no framew
 
 JavaScript's strength is **WebAssembly integration**. These experiments show how to:
 
-Build WASM allocators without Emscripten  
-60fps terminals via OffscreenCanvas  
-Lock-free data structures with Atomics  
-Zero-copy pipelines via ReadableStream
+1. Build WASM allocators without Emscripten  
+2. 60fps terminals via OffscreenCanvas  
+3. Lock-free data structures with Atomics  
+4. Zero-copy pipelines via ReadableStream
 
 ## Usage
 
