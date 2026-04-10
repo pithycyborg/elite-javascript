@@ -2,7 +2,7 @@
 
 **Zero-dependency browser experiments. WebAssembly edge. Service Worker mastery.**
 
-JavaScript that treats the browser as a systems platform. No bundlers, no frameworks—just vanilla JS + Web APIs pushing WebAssembly, SharedArrayBuffer, and OffscreenCanvas to their limits.
+JavaScript that treats the browser as a systems platform. No bundlers, no frameworks, just vanilla JS + Web APIs pushing WebAssembly, SharedArrayBuffer, and OffscreenCanvas to their limits.
 
 ## Featured
 
@@ -45,7 +45,7 @@ open index.html  # or double-click
 | JSON Parser | 1MB | 4.2ms | 2.1ms | 187ms |
 | Queue (1M ops) | - | 28μs | 14μs | 2.7ms |
 
-**Newsletter** for AI deep-dives + weekly prompts: [PithyCyborg.com](https://PithyCyborg.com)
+**Newsletter** for JS deep-dives + weekly prompts: [PithyCyborg.com](https://PithyCyborg.com)
 
 **X:** [@mrcomputersci](https://x.com/mrcomputersci) | [@pithycyborg](https://x.com/pithycyborg)
 
