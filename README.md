@@ -1,10 +1,24 @@
-# Elite JavaScript
+## Elite JavaScript
 
 **Zero-dependency browser experiments. WebAssembly edge. Service Worker mastery.**
 
 JavaScript that treats the browser as a systems platform. No bundlers, no frameworks, just vanilla JS + Web APIs pushing WebAssembly, SharedArrayBuffer, and OffscreenCanvas to their limits.
 
-## Featured
+## Flagship Experiments
+
+### Pithy Neural Kernel
+A browser-native neural playground with a systems feel. Weird, kinetic, and very online in the best way.
+
+- **Demo:** [pithy-neural-kernel](https://pithycyborg.github.io/elite-javascript/pithy-neural-kernel)
+- **Code:** [GitHub source](https://github.com/pithycyborg/elite-javascript/tree/main/pithy-neural-kernel/)
+
+### Pithy VerLite
+A zero-dependency cloth physics experiment with marbles, tearing, pressure, and just enough chaos to keep it fun.
+
+- **Demo:** [pithy-verlite](https://pithycyborg.github.io/elite-javascript/pithy-verlite/)
+- **Code:** [GitHub source](https://github.com/pithycyborg/elite-javascript/tree/main/pithy-verlite)
+
+## More Experiments
 
 | Experiment | Bundle Size | Key Technique |
 |------------|-------------|---------------|
@@ -19,23 +33,23 @@ JavaScript that treats the browser as a systems platform. No bundlers, no framew
 - **No frameworks:** Vanilla JS + Web APIs exclusively
 - **Bundle ≤ 5KB:** Gzip targets for instant loading
 - **Service Workers:** Offline-first, cache-first architecture
-- **Complete demos:** Open `index.html` → works immediately
+- **Complete demos:** Open `index.html` and it works immediately
 
 ## Philosophy
 
 JavaScript's strength is **WebAssembly integration**. These experiments show how to:
 
-1. Build WASM allocators without Emscripten  
-2. 60fps terminals via OffscreenCanvas  
-3. Lock-free data structures with Atomics  
-4. Zero-copy pipelines via ReadableStream
+1. Build WASM allocators without Emscripten
+2. Run 60fps terminals via OffscreenCanvas
+3. Build lock-free data structures with Atomics
+4. Create zero-copy pipelines via ReadableStream
 
 ## Usage
 
 ```bash
 git clone https://github.com/pithycyborg/elite-javascript
 cd experiment-name
-open index.html  # or double-click
+open index.html
 ```
 
 ## Benchmarks
