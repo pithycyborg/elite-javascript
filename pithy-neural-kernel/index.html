@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pithy Neural Kernel V1.1 | Terminal Core</title>
+<style>
+    body {
+        margin: 0;
+        background: #050505;
+        color: #0f0;
+        font-family: "Courier New", monospace;
+        overflow: hidden;
+    }
+    canvas {
+        display: block;
+        filter: contrast(1.15) brightness(1.1);
+        position: relative;
+        z-index: 1;
+    }
+    #ui {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        pointer-events: none;
+        z-index: 10;
+        background: rgba(0, 0, 0, 0.75);
+        padding: 14px 18px;
+        border: 1px solid rgba(0, 255, 0, 0.3);
+        border-radius: 2px;
+        box-shadow: 0 0 12px rgba(0, 255, 0, 0.2);
+        transition: background 0.3s ease;
+    }
+    .glitch {
+        animation: glitch 1.2s linear infinite;
+    }
+    @keyframes glitch {
+        0% { opacity: 1; }
+        50% { opacity: 0.85; }
+        100% { opacity: 1; }
+    }
+
+    #panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 260px;
+        background: rgba(5, 5, 5, 0.92);
+        border: 1px solid #0f0;
+        box-shadow: 0 0 15px #0f0;
+        padding: 12px 14px;
+        font-size: 11px;
+        pointer-events: auto;
+        z-index: 50;
+        transition: opacity 0.25s ease, transform 0.25s ease, background 0.3s ease;
+        cursor: move;
+    }
+    #panel.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(40px);
+    }
+    
+    /* Unified Surge Animation */
+    .flash {
+        animation: rainbow-flash 2s ease-out forwards;
+    }
+
+    @keyframes rainbow-flash {
+        0% { background: rgba(255, 0, 0, 0.5); box-shadow: 0 0 40px red; }
+        16% { background: rgba(255, 165, 0, 0.5); }
+        33% { background: rgba(255, 255, 0, 0.5); }
+        50% { background: rgba(0, 255, 0, 0.5); box-shadow: 0 0 40px #0f0; }
+        66% { background: rgba(0, 0, 255, 0.5); }
+        83% { background: rgba(75, 0, 130, 0.5); }
+        100% { box-shadow: 0 0 15px #0f0; } /* Return to default based on element */
+    }
+
+    #panel h2 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .panel-section {
+        margin-bottom: 12px;
+        border-top: 1px solid rgba(0, 255, 0, 0.2);
+        padding-top: 8px;
+    }
+    .panel-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    .panel-row label {
+        flex: 1;
+        margin-right: 8px;
+    }
+    .panel-row input[type="range"] {
+        flex: 1.3;
+    }
+    .panel-value {
+        font-size: 10px;
+        opacity: 0.85;
+        text-align: right;
+        margin-top: 2px;
+    }
+
+    button {
+        background: none;
+        border: 1px solid #0f0;
+        color: #0f0;
+        padding: 3px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-top: 6px;
+    }
+
+    #panelShow {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.8);
+        border: 1px solid #0f0;
+        color: #0f0;
+        padding: 5px 10px;
+        font-size: 15px;
+        cursor: pointer;
+        z-index: 60;
+        pointer-events: auto;
+    }
+
+    #modal {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(5, 5, 5, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+    #modalContent {
+        width: 520px;
+        border: 1px solid #0f0;
+        box-shadow: 0 0 25px #0f0;
+        background: #050505;
+        padding: 24px;
+        position: relative;
+    }
+    #modalContent h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    #modalClose {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        background: none;
+        border: 1px solid #0f0;
+        color: #0f0;
+        font-size: 18px;
+        width: 28px;
+        height: 28px;
+        line-height: 24px;
+        text-align: center;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+    <h1 class="glitch">Pithy Neural Kernel V1.1</h1>
+    <p id="status-line">STATUS: Unsupervised Learning: Active</p>
+    <div id="stats"></div>
+
+    <p style="margin-top:20px; font-size:0.9em; opacity:0.7;">
+        Real unsupervised AI running live in your browser.<br>
+        Built by <a href="https://pithycyborg.substack.com" target="_blank" style="color:#0f0; text-decoration:none;">PithyCyborg</a><br>
+        Single file • Zero dependencies • Pure vanilla JS
+    </p>
+</div>
+
+<div id="panel" class="hidden">
+    <button id="panelToggle">✕</button>
+    <h2>CONTROL PANEL</h2>
+
+    <div class="panel-section">
+        <div class="panel-row">
+            <label for="speed">Update rate</label>
+            <input id="speed" type="range" min="1" max="20" value="6">
+        </div>
+        <div class="panel-value" id="speedVal"></div>
+
+        <div class="panel-row">
+            <label for="lr">Learning rate</label>
+            <input id="lr" type="range" min="1" max="100" value="8">
+        </div>
+        <div class="panel-value" id="lrVal"></div>
+
+        <div class="panel-row">
+            <label for="radius">Neighborhood scale</label>
+            <input id="radius" type="range" min="5" max="40" value="15">
+        </div>
+        <div class="panel-value" id="radiusVal"></div>
+    </div>
+
+    <div class="panel-section">
+        <div class="panel-row">
+            <label for="glow">Glow intensity</label>
+            <input id="glow" type="range" min="0" max="30" value="10">
+        </div>
+        <div class="panel-value" id="glowVal"></div>
+
+        <div class="panel-row">
+            <label for="opacity">Panel opacity</label>
+            <input id="opacity" type="range" min="20" max="100" value="92">
+        </div>
+        <div class="panel-value" id="opacityVal"></div>
+    </div>
+
+    <div class="panel-section">
+        <div class="panel-row">
+            <label for="interactive">Interactive mode</label>
+            <input id="interactive" type="checkbox" checked>
+        </div>
+        <div class="panel-row">
+            <label for="toroidal">Toroidal topology</label>
+            <input id="toroidal" type="checkbox">
+        </div>
+        <div class="panel-row">
+            <label for="pause">Pause simulation</label>
+            <input id="pause" type="checkbox">
+        </div>
+    </div>
+
+    <button id="resetBtn">RESET WEIGHTS</button>
+    <button id="resetPanelBtn">RESET PANEL</button>
+    <button id="aboutBtn">ABOUT THIS MACHINE</button>
+</div>
+
+<button id="panelShow">☰ CONTROLS</button>
+
+<div id="modal">
+    <div id="modalContent">
+        <button id="modalClose">✕</button>
+        <h2>Pithy Neural Kernel V1.1</h2>
+        <p>You are watching a genuine Self-Organizing Map. It's a real unsupervised AI algorithm... training live inside your browser.</p>
+        <p>Without fancy servers, Python, or TensorFlow. Just 1,600 neurons competing in pure vanilla JavaScript. Watch with delight as they turn pure random noise into organized, beautiful, evolving color fields. Click and drag to inject colors. Flip toroidal topology. Tweak every parameter in real time. This is elite single-file cyberpunk engineering, lol. I didn't want ANY dependencies. The entire AI demo is one self-contained HTML file that runs instantly, offline, and forever. Hope you enjoy. :)</p>
+        
+        <p style="margin-top:24px; border-top:1px solid rgba(0,255,0,0.3); padding-top:12px; font-size:13px;">
+            <strong>ABOUT THE AUTHOR</strong><br>
+            Built by <a href="https://github.com/pithycyborg" target="_blank" style="color:#0f0; text-decoration:none;">Pithy Cyborg</a> | elite single-file drops and AI experiments<br>
+            Read my AI newsletter at <a href="https://pithycyborg.substack.com" target="_blank" style="color:#0f0; text-decoration:none;">PithyCyborg.Substack.com</a>
+        </p>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+/**
+ * -----------------------------------------------------------------------
+ * Pithy Neural Kernel V1.1 | [Autonomous Substrate]
+ * -----------------------------------------------------------------------
+ * A fiercely elite, single-file unsupervised AI visualizer.
+ * Built with zero dependencies in pure vanilla JavaScript.
+ *
+ * AUTHOR: Pithy Cyborg
+ * GITHUB: https://github.com/pithycyborg
+ * SUBSTACK: https://pithycyborg.substack.com
+ *
+ * My dear fellow, one must admire the purity here. No reliance on the
+ * bloated libraries of the modern era. Just 1,600 neurons organized by 
+ * sheer logic and a touch of mathematical grace.
+ * -----------------------------------------------------------------------
+ */
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const stats = document.getElementById("stats");
+const statusLine = document.getElementById("status-line");
+const statusBox = document.getElementById("ui");
+
+const panel = document.getElementById("panel");
+const panelToggle = document.getElementById("panelToggle");
+const panelShow = document.getElementById("panelShow");
+const resetBtn = document.getElementById("resetBtn");
+const resetPanelBtn = document.getElementById("resetPanelBtn");
+const aboutBtn = document.getElementById("aboutBtn");
+
+const speedSlider = document.getElementById("speed");
+const lrSlider = document.getElementById("lr");
+const radiusSlider = document.getElementById("radius");
+const glowSlider = document.getElementById("glow");
+const opacitySlider = document.getElementById("opacity");
+const interactiveCheckbox = document.getElementById("interactive");
+const toroidalCheckbox = document.getElementById("toroidal");
+const pauseCheckbox = document.getElementById("pause");
+
+const speedVal = document.getElementById("speedVal");
+const lrVal = document.getElementById("lrVal");
+const radiusVal = document.getElementById("radiusVal");
+const glowVal = document.getElementById("glowVal");
+const opacityVal = document.getElementById("opacityVal");
+
+const modal = document.getElementById("modal");
+const modalClose = document.getElementById("modalClose");
+
+let width, height;
+const gridSize = 40;
+let weights = [];
+let epoch = 0;
+let isPaused = false;
+
+/*
+ * We employ an offscreen canvas here, a subtle trick to ensure the 
+ * performance remains as sharp as a tailored lapel, even while 
+ * applying those rather taxing CRT glow filters on the main stage.
+ */
+let offscreen, octx;
+const renderScale = 0.5;
+
+let mouseX = 0, mouseY = 0, mouseDown = false;
+
+const controls = {
+    stepsPerFrame: 6,
+    lrBase: 0.08,
+    radiusBase: 15,
+    glow: 10,
+    interactive: true,
+    toroidal: false
+};
+
+function init() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+
+    offscreen = document.createElement("canvas");
+    octx = offscreen.getContext("2d");
+    offscreen.width = Math.ceil(gridSize * renderScale);
+    offscreen.height = Math.ceil(gridSize * renderScale);
+
+    resetWeights();
+}
+
+function resetWeights() {
+    /*
+     * At the start of our little experiment, we cast the neurons 
+     * into a state of total, chaotic ignorance. Random colors 
+     * for every node. Don't you see? It's a true tabula rasa.
+     */
+    weights = Array.from({ length: gridSize * gridSize }, () => [
+        Math.random(), Math.random(), Math.random()
+    ]);
+    epoch = 0;
+
+    /* Synchronized Rainbow Surge on UI elements */
+    [panel, statusBox].forEach(el => {
+        el.classList.remove("flash");
+        void el.offsetWidth; // Force reflow
+        el.classList.add("flash");
+    });
+    
+    // Reset background to original translucent states after animation
+    setTimeout(() => {
+        panel.style.background = `rgba(5, 5, 5, ${opacitySlider.value / 100})`;
+        statusBox.style.background = `rgba(0, 0, 0, 0.75)`;
+    }, 2000);
+}
+
+function resetPanel() {
+    speedSlider.value = 6;
+    lrSlider.value = 8;
+    radiusSlider.value = 15;
+    glowSlider.value = 10;
+    opacitySlider.value = 92;
+    interactiveCheckbox.checked = true;
+    toroidalCheckbox.checked = false;
+    pauseCheckbox.checked = false;
+
+    controls.stepsPerFrame = 6;
+    controls.lrBase = 0.08;
+    controls.radiusBase = 15;
+    controls.glow = 10;
+    controls.interactive = true;
+    controls.toroidal = false;
+    isPaused = false;
+    statusLine.textContent = "STATUS: Unsupervised Learning: Active";
+
+    panel.style.background = `rgba(5,5,5,0.92)`;
+    updatePanelLabels();
+}
+
+function togglePanel() {
+    if (modal.style.display === "flex") {
+        modal.style.display = "none";
+        return;
+    }
+
+    if (panel.classList.contains("hidden")) {
+        panel.classList.remove("hidden");
+        panelShow.style.display = "none";
+    } else {
+        panel.classList.add("hidden");
+        panelShow.style.display = "block";
+    }
+}
+
+function dist(a, b) {
+    return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+function toroidalDistance(x1, y1, x2, y2, size) {
+    /*
+     * Ah, the Toroidal Loop. It allows the map to behave as if it 
+     * were wrapped around a donut, edges meeting edges in a 
+     * seamless, infinite horizon. I thought it was kinda cool.
+     */
+    const dx = Math.min(Math.abs(x1 - x2), size - Math.abs(x1 - x2));
+    const dy = Math.min(Math.abs(y1 - y2), size - Math.abs(y1 - y2));
+    return Math.hypot(dx, dy);
+}
+
+function getTargetColor() {
+    if (!controls.interactive || !mouseDown) {
+        return [Math.random(), Math.random(), Math.random()];
+    }
+    const gx = Math.floor((mouseX / width) * gridSize);
+    const gy = Math.floor((mouseY / height) * gridSize);
+    const idx = gy * gridSize + gx;
+    const w = weights[Math.max(0, Math.min(weights.length - 1, idx))];
+    const boost = 0.18;
+    return w.map(v => Math.min(1, Math.max(0, v + boost * (Math.random() - 0.5))));
+}
+
+function train() {
+    /*
+     * This, my friend, is where the 'learning' happens. We pick a color, 
+     * find the neuron that most closely resembles it, and then invite 
+     * its neighbors to subtly shift their own identities to match. 
+     * Competitive, yet strangely cooperative.
+     */
+    if (isPaused) return;
+
+    epoch++;
+    const decay = Math.exp(-epoch / 5000);
+    let lr = controls.lrBase * decay;
+    let radius = controls.radiusBase * decay;
+
+    if (controls.interactive && mouseDown) {
+        lr *= 1.8;
+        radius *= 0.75;
+    }
+
+    const target = getTargetColor();
+    let bmuIndex = 0;
+    let minDist = Infinity;
+
+    for (let i = 0; i < weights.length; i++) {
+        const d = dist(target, weights[i]);
+        if (d < minDist) {
+            minDist = d;
+            bmuIndex = i;
+        }
+    }
+
+    const bmuX = bmuIndex % gridSize;
+    const bmuY = Math.floor(bmuIndex / gridSize);
+
+    for (let i = 0; i < weights.length; i++) {
+        const x = i % gridSize;
+        const y = Math.floor(i / gridSize);
+        const d = controls.toroidal 
+            ? toroidalDistance(x, y, bmuX, bmuY, gridSize)
+            : Math.hypot(x - bmuX, y - bmuY);
+
+        if (d < radius) {
+            const influence = Math.exp(-(d * d) / (2 * radius * radius));
+            for (let c = 0; c < 3; c++) {
+                weights[i][c] += lr * influence * (target[c] - weights[i][c]);
+            }
+        }
+    }
+}
+
+function draw() {
+    octx.clearRect(0, 0, offscreen.width, offscreen.height);
+    ctx.shadowColor = "#0f0";
+    ctx.shadowBlur = controls.glow;
+
+    const cellW = offscreen.width / gridSize;
+    const cellH = offscreen.height / gridSize;
+
+    for (let i = 0; i < weights.length; i++) {
+        const x = i % gridSize;
+        const y = Math.floor(i / gridSize);
+        const [r, g, b] = weights[i].map(v => Math.floor(v * 255));
+        octx.fillStyle = `rgb(${r},${g},${b})`;
+        octx.fillRect(x * cellW, y * cellH, cellW + 1, cellH + 1);
+    }
+
+    ctx.drawImage(offscreen, 0, 0, width, height);
+    ctx.shadowBlur = 0;
+
+    const mode = controls.interactive 
+        ? (mouseDown ? "INTERACTIVE • INJECTING" : "INTERACTIVE • IDLE")
+        : "RANDOM MODE";
+
+    const topo = controls.toroidal ? "TOROIDAL" : "BOUNDED";
+
+    stats.textContent = `NEURONS: ${weights.length} | EPOCH: ${epoch} | ${mode} | ${topo}`;
+}
+
+function loop() {
+    /*
+     * The heart of the machine beats here. We train and draw, 
+     * train and draw, until the noise finally settles into a 
+     * coherent tapestry. A bit like life, I suppose.
+     */
+    for (let i = 0; i < controls.stepsPerFrame; i++) train();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+function updatePanelLabels() {
+    speedVal.textContent = `update rate | ${controls.stepsPerFrame} steps/frame`;
+    lrVal.textContent = `learning rate | ${controls.lrBase.toFixed(3)}`;
+    radiusVal.textContent = `neighborhood | ${controls.radiusBase}`;
+    glowVal.textContent = `glow intensity | ${controls.glow}`;
+    opacityVal.textContent = `panel opacity | ${opacitySlider.value}%`;
+}
+
+// Event Listeners
+canvas.addEventListener("mousemove", e => {
+    const r = canvas.getBoundingClientRect();
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+});
+canvas.addEventListener("mousedown", () => mouseDown = true);
+canvas.addEventListener("mouseup", () => mouseDown = false);
+canvas.addEventListener("mouseleave", () => mouseDown = false);
+
+speedSlider.addEventListener("input", () => { controls.stepsPerFrame = +speedSlider.value; updatePanelLabels(); });
+lrSlider.addEventListener("input", () => { controls.lrBase = lrSlider.value / 100; updatePanelLabels(); });
+radiusSlider.addEventListener("input", () => { controls.radiusBase = +radiusSlider.value; updatePanelLabels(); });
+glowSlider.addEventListener("input", () => { controls.glow = +glowSlider.value; updatePanelLabels(); });
+opacitySlider.addEventListener("input", () => {
+    panel.style.background = `rgba(5,5,5,${opacitySlider.value / 100})`;
+    updatePanelLabels();
+});
+interactiveCheckbox.addEventListener("change", () => { controls.interactive = interactiveCheckbox.checked; });
+toroidalCheckbox.addEventListener("change", () => { controls.toroidal = toroidalCheckbox.checked; });
+pauseCheckbox.addEventListener("change", () => { 
+    isPaused = pauseCheckbox.checked; 
+    statusLine.textContent = isPaused ? "STATUS: Unsupervised Learning: Paused" : "STATUS: Unsupervised Learning: Active";
+});
+
+resetBtn.addEventListener("click", resetWeights);
+resetPanelBtn.addEventListener("click", resetPanel);
+aboutBtn.addEventListener("click", () => { modal.style.display = "flex"; });
+
+panelToggle.addEventListener("click", togglePanel);
+panelShow.addEventListener("click", togglePanel);
+
+modalClose.addEventListener("click", () => { modal.style.display = "none"; });
+
+// Keyboard shortcuts
+document.addEventListener("keydown", e => {
+    if (e.key === " ") {
+        e.preventDefault();
+        togglePanel();
+        return;
+    }
+    if (e.key === "Escape" || e.key === "`") {
+        if (modal.style.display === "flex") {
+            modal.style.display = "none";
+        } else {
+            togglePanel();
+        }
+    }
+});
+
+// Draggable panel
+let drag = false, offsetX = 0, offsetY = 0;
+panel.addEventListener("mousedown", e => {
+    if (["INPUT","LABEL","BUTTON"].includes(e.target.tagName)) return;
+    drag = true;
+    offsetX = e.clientX - panel.offsetLeft;
+    offsetY = e.clientY - panel.offsetTop;
+});
+document.addEventListener("mousemove", e => {
+    if (!drag) return;
+    panel.style.left = (e.clientX - offsetX) + "px";
+    panel.style.top = (e.clientY - offsetY) + "px";
+    panel.style.right = "auto";
+});
+document.addEventListener("mouseup", () => drag = false);
+
+window.addEventListener("resize", init);
+
+init();
+updatePanelLabels();
+loop();
+</script>
+</body>
+</html>
