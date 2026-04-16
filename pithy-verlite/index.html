@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pithy VerLite | Kinetic Neural Kernel V.3</title>
+    <style>
+        :root { --neon: #55ff55; --bg: #050506; --warn: #ff3333; }
+        body { margin: 0; overflow: hidden; background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; user-select: none; }
+        canvas { display: block; cursor: crosshair; }
+        
+        .diag-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(10, 10, 15, 0.8); border-left: 3px solid var(--neon);
+            padding: 15px; width: 180px; pointer-events: none; font-size: 10px; z-index: 20;
+        }
+        
+        .control-panel {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(10, 10, 15, 0.9); border: 1px solid var(--neon);
+            padding: 15px; width: 250px; z-index: 20;
+            max-height: 90vh; overflow-y: auto; overflow-x: hidden;
+            scrollbar-gutter: stable;
+        }
+        
+        h1, h2 { margin: 0; font-size: 14px; border-bottom: 1px solid var(--neon); padding-bottom: 5px; text-transform: uppercase; }
+        .stat-line { margin: 5px 0; letter-spacing: 1px; }
+        
+        label { display: block; font-size: 10px; margin-top: 10px; opacity: 0.7; text-transform: uppercase; }
+        select, button, input {
+            width: 100%; background: transparent; border: 1px solid var(--neon);
+            color: var(--neon); padding: 6px; margin-top: 5px; cursor: pointer;
+            font-family: inherit; font-size: 11px; box-sizing: border-box;
+        }
+        
+        .btn-detonate { border-color: var(--warn); color: var(--warn); font-weight: bold; margin-top: 15px; }
+        .btn-detonate:hover { background: var(--warn); color: #000; }
+
+        input[type="range"] { -webkit-appearance: none; border: none; height: 15px; }
+        input[type="range"]::-webkit-slider-runnable-track { background: #222; border: 1px solid var(--neon); height: 8px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; background: var(--neon); width: 12px; height: 18px; margin-top: -6px; }
+
+        button:hover { background: var(--neon); color: #000; }
+        
+        #flash {
+            position: fixed; inset: 0; pointer-events: none; opacity: 0;
+            background: white; z-index: 100; transition: opacity 0.1s ease-out;
+        }
+
+        #shortcuts-hint {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(10, 10, 15, 0.8); border-left: 3px solid var(--neon);
+            padding: 10px 15px; font-size: 9px; letter-spacing: 1px;
+            pointer-events: none; z-index: 20; opacity: 0.7;
+        }
+        .hint-line { margin: 3px 0; }
+        
+        #modal-overlay {
+            position: fixed; inset: 0;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.95); z-index: 200; padding: 40px;
+        }
+        #about-modal {
+            width: 100%; max-width: 700px; max-height: 80vh;
+            background: #000; border: 2px solid var(--neon);
+            border-top: 6px solid var(--neon); border-bottom: 6px solid var(--neon);
+            padding: 40px; box-shadow: 0 0 100px rgba(85, 255, 85, 0.2);
+            overflow-y: auto; pointer-events: all; line-height: 1.6;
+        }
+        .close { float: right; cursor: pointer; font-weight: bold; color: var(--warn); }
+        a { color: #fff; text-decoration: underline; }
+        hr { border: 0; border-top: 1px solid var(--neon); margin: 25px 0; opacity: 0.3; }
+        .feature-tag { color: #fff; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div id="flash"></div>
+    
+    <div class="diag-panel">
+        <h2>Kernel Diagnostics</h2>
+        <div class="stat-line">FPS: <span id="fps">--</span></div>
+        <div id="p-count" class="stat-line">NODES: 0</div>
+        <div id="tear-count" class="stat-line">TEARS: 0</div>
+    </div>
+
+    <div id="shortcuts-hint">
+        <div class="hint-line">SPACE -- launch marble</div>
+        <div class="hint-line">R -- reset</div>
+        <div class="hint-line">E -- explode</div>
+        <div class="hint-line">DRAG -- move marble or cloth</div>
+    </div>
+
+    <div class="control-panel">
+        <h1>Control Interface</h1>
+        
+        <label>Blanket Dimension</label>
+        <select id="grid-size">
+            <option value="small" selected>COMPACT (22x22 Square)</option>
+            <option value="medium">STANDARD (32x20 Landscape)</option>
+        </select>
+
+        <label>Wind Velocity: <span id="wind-label">0.5</span></label>
+        <input type="range" id="wind-slider" min="0" max="5" step="0.1" value="0.5">
+
+        <label>Snow Density: <span id="snow-label">25%</span></label>
+        <input type="range" id="snow-slider" min="0" max="300" step="5" value="75">
+
+        <label>Tear Threshold: <span id="tear-label">3.0x</span></label>
+        <input type="range" id="tear-slider" min="1.5" max="6" step="0.1" value="3.0">
+
+        <label>Visual Protocol</label>
+        <select id="color-mode">
+            <option value="psychedelic" selected>VIBRANT RAINBOW</option>
+            <option value="hyper">HYPER DRIVE</option>
+            <option value="plasma">PLASMA VIBE</option>
+            <option value="neon">NEON GREEN</option>
+            <option value="roygbv">ROYGBV STATIC</option>
+        </select>
+
+        <label>Environmental G</label>
+        <select id="gravity-mode">
+            <option value="0.45">EARTH 9.8m/s (Snappy)</option>
+            <option value="0.1">LUNAR LOW (Floaty)</option>
+            <option value="0">ZERO GRAVITY (Viscous)</option>
+        </select>
+
+        <button onclick="world.launchMarble()">LAUNCH MARBLE [SPACE]</button>
+        <button onclick="world.reset()">SYSTEM RESET [R]</button>
+        <button class="btn-detonate" onclick="world.detonate()">EXPLODE MARBLES [E]</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='flex'">MANIFESTO (ABOUT)</button>
+    </div>
+
+    <div id="modal-overlay" onclick="if(event.target === this) this.style.display='none'">
+        <div id="about-modal">
+            <span class="close" onclick="document.getElementById('modal-overlay').style.display='none'">[CLOSE PROTOCOL]</span>
+            <h3>Pithy VerLite | Kinetic Neural Kernel V.3</h3>
+            <p>You are observing the definitive version of a high-precision Newtonian constraint solver. This engine represents the pinnacle of minimalist physics: pure <strong>Verlet Integration</strong> stripped of all library overhead.</p>
+            <hr>
+            <p><span class="feature-tag">Educational Value</span><br>
+            This code demonstrates <strong>Iterative Relaxation</strong>. For every frame, the solver resolves distance constraints across the grid multiple times to maintain structural integrity. It's the same math used for movie-grade cloth simulation, running in your browser at 60Hz.</p>
+            <p><span class="feature-tag">Tearable Cloth</span><br>
+            Sticks stretched beyond their tear threshold snap permanently. Each break triggers an audio crack. Crank up marble detonations to watch the fabric shred in real time.</p>
+            <p><span class="feature-tag">Atmospheric Viscosity</span><br>
+            A hidden feature of this engine is the <strong>Drag-to-G Correlation</strong>. In Lunar and Zero-G modes, the kernel automatically increases the friction coefficient, simulating the fluid resistance of a low-energy environment.</p>
+            <p><span class="feature-tag">Shatter Logic</span><br>
+            Clicking on the atmospheric snow triggers a radial displacement vector. O(n) spatial checks performed without degrading the main physics thread.</p>
+            <hr>
+            <p><strong>ABOUT THE ARCHITECT</strong></p>
+            <p>Engineered by <a href="https://github.com/pithycyborg" target="_blank">Pithy Cyborg</a>. I specialize in elite single-file drops and minimalist AI experiments.</p>
+            <p>Read the latest in cyberpunk engineering at <a href="https://PithyCyborg.Substack.com" target="_blank">PithyCyborg.Substack.com</a></p>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+<script>
+// ============================================================
+// PITHY VERLITE | KINETIC NEURAL KERNEL V.3
+// A single-file, zero-dependency cloth physics engine.
+// No Three.js. No Matter.js. No Canvas libraries. Nothing.
+// Just math, a canvas element, and requestAnimationFrame.
+// This is what it looks like when you build from first principles.
+// ============================================================
+
+// TRAIL_LEN controls how many frames of history each marble stores.
+// We use a RING BUFFER instead of a normal array for this.
+// Why? Because push() + shift() on an array every single frame
+// creates garbage for the JS engine to clean up. At 60fps with
+// multiple marbles that adds up fast. A ring buffer reuses the
+// same 12 slots forever. No garbage. No GC pauses. Just speed.
+const TRAIL_LEN = 12;
+
+class VerLite {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+
+        // points = the cloth nodes (each one has a position + old position)
+        // sticks = the constraints connecting them (each one has a rest length)
+        // marbles = the physics balls you launch at the cloth
+        this.points = [];
+        this.sticks = [];
+        this.marbles = [];
+        this.snow = [];
+
+        // We track old mouse position too so we can infer mouse velocity.
+        // That's how the proximity push on marbles works -- no explicit
+        // velocity variable needed. Verlet style, baby.
+        this.mouse = { x: 0, y: 0, oldX: 0, oldY: 0, down: false, target: null, targetType: null };
+
+        this.audioCtx = null;
+        this.lastTime = 0;
+        this.fpsBuffer = [];
+        this.fpsLastDisplay = 0;
+        this.tearCount = 0;
+
+        // THE FIXED TIMESTEP ACCUMULATOR -- this is a classic game loop pattern.
+        // The problem it solves: RAF fires at different rates on different monitors
+        // (60Hz, 120Hz, 144Hz). Without this, your physics would literally run
+        // faster on a gaming monitor. The accumulator collects real elapsed time
+        // and drains it in fixed 16.67ms chunks so physics is always the same speed.
+        this.accumulator = 0;
+        this.fixedStep = 1000 / 60; // 16.67ms per physics tick
+
+        this.settings = {
+            gridSize: 'small',
+            wind: 0.5,
+            snow: 75,
+            colorMode: 'psychedelic',
+            gravity: 0.45,
+            tearThreshold: 3.0
+        };
+
+        this.init();
+        this.setupSnowPool();
+        this.setupNet();
+        this.loop(0);
+    }
+
+    init() {
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        this.canvas.onmousedown = (e) => {
+            this.resumeAudio();
+            this.mouse.down = true;
+            this.shatterSnow();
+            this.findTarget();
+        };
+
+        window.onmousemove = (e) => {
+            this.mouse.oldX = this.mouse.x;
+            this.mouse.oldY = this.mouse.y;
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+            // Continuous target scan while dragging with no active target.
+            // This means if you click empty space and drag toward a marble,
+            // it will pick it up mid-drag. Feels way more natural.
+            if (this.mouse.down && !this.mouse.target) {
+                this.findTarget();
+            }
+        };
+
+        window.onmouseup = () => {
+            this.mouse.down = false;
+            this.mouse.target = null;
+            this.mouse.targetType = null;
+        };
+
+        // Keyboard shortcuts. Space, R, E. Simple and ergonomic.
+        // Note the e.preventDefault() on Space -- without it, the browser
+        // would scroll the page down every time you launch a marble.
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') { e.preventDefault(); this.launchMarble(); }
+            if (e.code === 'KeyR') this.reset();
+            if (e.code === 'KeyE') this.detonate();
+        });
+
+        document.getElementById('grid-size').addEventListener('change', (e) => {
+            this.settings.gridSize = e.target.value;
+            this.setupNet();
+        });
+        document.getElementById('wind-slider').addEventListener('input', (e) => {
+            this.settings.wind = parseFloat(e.target.value);
+            document.getElementById('wind-label').innerText = parseFloat(e.target.value).toFixed(1);
+        });
+        document.getElementById('snow-slider').addEventListener('input', (e) => {
+            this.settings.snow = parseInt(e.target.value);
+            document.getElementById('snow-label').innerText = Math.round(parseInt(e.target.value) / 300 * 100) + '%';
+        });
+        document.getElementById('tear-slider').addEventListener('input', (e) => {
+            this.settings.tearThreshold = parseFloat(e.target.value);
+            document.getElementById('tear-label').innerText = parseFloat(e.target.value).toFixed(1) + 'x';
+        });
+        document.getElementById('color-mode').addEventListener('change', (e) => {
+            this.settings.colorMode = e.target.value;
+        });
+        document.getElementById('gravity-mode').addEventListener('change', (e) => {
+            this.settings.gravity = parseFloat(e.target.value);
+        });
+
+        window.addEventListener('resize', () => {
+            this.width = window.innerWidth;
+            this.height = window.innerHeight;
+            this.canvas.width = this.width;
+            this.canvas.height = this.height;
+            this.setupNet();
+        });
+    }
+
+    // The Web Audio API is blocked until the user interacts with the page.
+    // So we lazily create the AudioContext on first click/keypress.
+    // resumeAudio() handles both the lazy init AND the case where the
+    // browser suspends it after inactivity.
+    resumeAudio() {
+        if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+    }
+
+    // Pure synthesis. No audio files. No samples loaded from a server.
+    // An oscillator node + a gain node, connected and fired in under 10 lines.
+    // The exponentialRampToValueAtTime is what makes it fade out cleanly
+    // instead of clicking/popping when it cuts off. Tiny detail. Huge difference.
+    beep(freq, type, vol=0.03, duration=0.1) {
+        if (!this.audioCtx) return;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(this.audioCtx.destination);
+        osc.start(); osc.stop(this.audioCtx.currentTime + duration);
+    }
+
+    // Sawtooth wave at a randomized high frequency = a sharp crack/snap sound.
+    // Perfect for cloth tearing. Your ears believe the physics.
+    crackSound() {
+        if (!this.audioCtx) return;
+        this.beep(800 + Math.random() * 400, 'sawtooth', 0.015, 0.04);
+    }
+
+    // We pre-allocate ALL 300 snow particles upfront and keep them alive forever.
+    // When a particle falls off the bottom of the screen, we teleport it back to
+    // the top with a fresh random x position. No new objects created mid-simulation.
+    // This is called object pooling and it keeps memory usage flat.
+    setupSnowPool() {
+        this.snow = [];
+        for (let i = 0; i < 300; i++) {
+            this.snow.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                vx: 0, vy: 0, speed: 1 + Math.random() * 2,
+                w: 1 + Math.random() * 2, hue: Math.random() * 360
+            });
+        }
+    }
+
+    // When you click, we push every nearby snow particle away from the cursor.
+    // The math is: get the angle from cursor to particle, then apply a force
+    // along that angle proportional to how close the particle is.
+    // Particles far away feel nothing. Particles right on top of the cursor
+    // get blasted. That's the (180 - d) * 0.25 calculation.
+    shatterSnow() {
+        const activeCount = this.settings.snow;
+        if (activeCount === 0) return;
+        this.beep(800, 'sine', 0.01, 0.05);
+        for (let i = 0; i < activeCount; i++) {
+            let s = this.snow[i];
+            const dx = s.x - this.mouse.x, dy = s.y - this.mouse.y, d = Math.hypot(dx, dy);
+            if (d < 180) {
+                const angle = Math.atan2(dy, dx);
+                const force = (180 - d) * 0.25;
+                s.vx = Math.cos(angle) * force;
+                s.vy = Math.sin(angle) * force;
+            }
+        }
+    }
+
+    // This builds the entire cloth grid from scratch.
+    // Each point is a node. Adjacent nodes get connected by sticks.
+    // The top row has some nodes marked isStatic = true, which means
+    // the constraint solver will never move them. Those are your pin points.
+    // Every 4th top node is pinned, which gives that natural hanging drape.
+    setupNet() {
+        this.points = [];
+        this.sticks = [];
+        this.marbles = [];
+        this.tearCount = 0;
+        document.getElementById('tear-count').innerText = 'TEARS: 0';
+
+        const sizeMode = this.settings.gridSize;
+        let cols, rows, spacing = 22;
+        if (sizeMode === 'small') { cols = 22; rows = 22; }
+        else { cols = 32; rows = 20; spacing = 20; }
+
+        const startX = (this.width - (cols * spacing)) / 2;
+        const grid = [];
+        for (let y = 0; y < rows; y++) {
+            grid[y] = [];
+            for (let x = 0; x < cols; x++) {
+                const isPinned = y === 0 && (x % 4 === 0 || x === cols - 1);
+                const p = {
+                    x: startX + x * spacing, y: 60 + y * spacing,
+                    oldX: startX + x * spacing, oldY: 60 + y * spacing,
+                    isStatic: isPinned,
+                    // 'off' is a random offset used to make each node's wind
+                    // response slightly different. Without it every node would
+                    // sway in perfect sync and look fake.
+                    off: Math.random() * 100,
+                    bornTime: Date.now()   // <-- Added for fade logic
+                };
+                this.points.push(p);
+                grid[y][x] = p;
+                if (x > 0) this.addStick(grid[y][x], grid[y][x-1]);
+                if (y > 0) this.addStick(grid[y][x], grid[y-1][x]);
+            }
+        }
+        document.getElementById('p-count').innerText = `NODES: ${this.points.length}`;
+    }
+
+    // A stick stores references to its two endpoint nodes plus a rest length.
+    // The rest length is the distance between them at creation time.
+    // During constraint solving we push/pull the endpoints back toward
+    // that original distance every frame. That's what makes it feel like fabric.
+    addStick(p1, p2) {
+        this.sticks.push({ p1, p2, len: Math.hypot(p1.x - p2.x, p1.y - p2.y), torn: false });
+    }
+
+    // Each marble gets a random entry height, random speed, and a slight
+    // vertical arc bias so they don't always fly in perfectly horizontally.
+    // The arcBias subtracted toward negative means marbles trend downward
+    // slightly on entry, which feels more natural than a purely flat shot.
+    launchMarble() {
+        this.resumeAudio();
+        const hue = Math.random() * 360;
+        const radius = 18 + Math.random() * 12;
+        const vx = 25 + Math.random() * 55;
+        const entryY = this.height * (0.15 + Math.random() * 0.4);
+        const arcBias = (Math.random() - 0.7);
+        const vy = arcBias * (vx * 0.35);
+
+        // Pre-allocated ring buffer for the trail. See TRAIL_LEN comment at top.
+        // trailHead is the write pointer. trailFill tracks how full the buffer is
+        // so we don't render garbage slots before the marble has moved 12 frames.
+        const trail = new Array(TRAIL_LEN).fill(null).map(() => ({ x: 0, y: 0 }));
+        this.marbles.push({
+            x: 0, oldX: -vx,
+            y: entryY, oldY: entryY + vy,
+            r: radius, hue, color: `hsl(${hue}, 100%, 60%)`,
+            trail, trailHead: 0, trailFill: 0
+        });
+        this.beep(120 + Math.random() * 80, 'square', 0.05);
+    }
+
+    // Detonation blasts every cloth node within 350px away from each marble.
+    // Force is inversely proportional to distance: closer = bigger blast.
+    // The white screen flash is just a CSS opacity transition on a full-screen div.
+    // Simple trick that sells the explosion instantly.
+    detonate() {
+        if (this.marbles.length === 0) return;
+        this.resumeAudio();
+        const flash = document.getElementById('flash');
+        flash.style.opacity = '0.8';
+        setTimeout(() => flash.style.opacity = '0', 100);
+        for (let m of this.marbles) {
+            this.beep(150, 'square', 0.1, 0.4);
+            for (let p of this.points) {
+                const dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy);
+                if (d < 350) {
+                    const force = (350 - d) * 0.2;
+                    const angle = Math.atan2(dy, dx);
+                    p.x += Math.cos(angle) * force;
+                    p.y += Math.sin(angle) * force;
+                }
+            }
+        }
+        this.marbles = [];
+    }
+
+    reset() {
+        this.resumeAudio();
+        this.setupNet();
+        this.beep(600, 'sine');
+    }
+
+    // We check marbles FIRST before cloth points because marbles are bigger
+    // and more satisfying to grab. The hit radius is r + 20px so you don't
+    // have to click pixel-perfectly on the marble's center.
+    // If no marble is close enough, we fall back to finding the nearest cloth node.
+    findTarget() {
+        let minDist = 60;
+        this.mouse.target = null;
+        this.mouse.targetType = null;
+
+        for (let m of this.marbles) {
+            const d = Math.hypot(m.x - this.mouse.x, m.y - this.mouse.y);
+            if (d < m.r + 20 && d < minDist) {
+                minDist = d;
+                this.mouse.target = m;
+                this.mouse.targetType = 'marble';
+            }
+        }
+
+        if (!this.mouse.target) {
+            minDist = 50;
+            for (let p of this.points) {
+                const d = Math.hypot(p.x - this.mouse.x, p.y - this.mouse.y);
+                if (d < minDist) {
+                    minDist = d;
+                    this.mouse.target = p;
+                    this.mouse.targetType = 'point';
+                }
+            }
+        }
+    }
+
+    update() {
+        const gravity = this.settings.gravity;
+        const windScale = this.settings.wind;
+        const activeSnow = this.settings.snow;
+        const tearThreshold = this.settings.tearThreshold;
+
+        // DRAG-TO-G CORRELATION: when gravity is near zero, we crank up friction.
+        // This makes zero-g feel viscous and floaty rather than just "slow falling."
+        // It's a subtle cheat that makes the different gravity modes feel physically
+        // distinct rather than just being the same behavior at different speeds.
+        const friction = (gravity === 0) ? 0.92 : (gravity < 0.2) ? 0.95 : 0.985;
+        const time = Date.now() * 0.001;
+
+        // Snow update. Each particle drifts on a sine wave for lateral movement
+        // plus any impulse velocity from being shattered. The sine uses the
+        // particle's hue value as a phase offset so each one sways differently.
+        for (let i = 0; i < activeSnow; i++) {
+            let s = this.snow[i];
+            s.y += (s.speed * (gravity + 0.5)) + s.vy;
+            s.x += Math.sin(time + s.hue) * 0.5 + s.vx;
+            s.vx *= friction; s.vy *= friction;
+            if (s.y > this.height) {
+                s.y = -10; s.x = Math.random() * this.width; s.vx = 0; s.vy = 0;
+            }
+        }
+
+        // Hard position override for whatever we're dragging.
+        // For marbles we save oldX/oldY first so Verlet can still infer
+        // velocity when we release -- that's what gives the throw effect.
+        if (this.mouse.down && this.mouse.target) {
+            if (this.mouse.targetType === 'marble') {
+                const t = this.mouse.target;
+                t.oldX = t.x; t.oldY = t.y;
+                t.x = this.mouse.x; t.y = this.mouse.y;
+            } else {
+                this.mouse.target.x = this.mouse.x;
+                this.mouse.target.y = this.mouse.y;
+            }
+        }
+
+        // Proximity push: if you click near a marble but aren't directly
+        // dragging it, we push it away proportional to mouse velocity.
+        // The (this.mouse.x - this.mouse.oldX) is mouse velocity.
+        // No fancy physics needed -- just delta position per frame.
+        if (!(this.mouse.down && this.mouse.targetType === 'marble')) {
+            for (let m of this.marbles) {
+                const dx = m.x - this.mouse.x, dy = m.y - this.mouse.y, d = Math.hypot(dx, dy);
+                if (this.mouse.down && d < m.r + 35) {
+                    const angle = Math.atan2(dy, dx);
+                    const force = Math.max(12, (this.mouse.x - this.mouse.oldX) * 1.8);
+                    m.x += Math.cos(angle) * force;
+                    m.y += Math.sin(angle) * force;
+                }
+            }
+        }
+
+        // THE CORE VERLET INTEGRATION LOOP.
+        // This is the heart of the whole engine. For each point:
+        //   velocity = current position minus old position (implicit, no variable needed)
+        //   new position = current + velocity + acceleration (gravity + wind)
+        //   then save current as old for next frame
+        // That's it. No force vectors. No mass variables. No explicit velocity storage.
+        // The position history IS the velocity. That's what makes Verlet so elegant.
+        const all = [...this.points, ...this.marbles];
+        for (let p of all) {
+            if (p.isStatic) continue;
+            if (this.mouse.down && this.mouse.targetType === 'marble' && p === this.mouse.target) continue;
+
+            const vx = (p.x - p.oldX) * friction;
+            const vy = (p.y - p.oldY) * friction;
+            p.oldX = p.x; p.oldY = p.y;
+            // Wind uses a sine wave offset by the node's random 'off' value.
+            // This means the cloth ripples in a wave rather than all nodes
+            // moving in perfect lockstep. Makes it look alive.
+            const wind = p.off ? Math.sin(time + p.off) * windScale * 0.4 : 0;
+            p.x += vx + wind;
+            p.y += vy + gravity;
+
+            // Floor collision: stop at the bottom, kill downward velocity.
+            if (p.y > this.height) { p.y = this.height; p.oldY = p.y + vy * 0.3; }
+
+            // Right wall bounce: the 0.22 coefficient gives a mild rebound.
+            // We set oldX AHEAD of current position so next frame Verlet
+            // infers a leftward velocity. That's the bounce. No special case needed.
+            if (p.x > this.width) {
+                const vxWall = (p.x - p.oldX) * 0.22;
+                p.x = this.width; p.oldX = p.x + vxWall;
+            } else if (p.x < 0) {
+                p.x = 0; p.oldX = p.x;
+            }
+        }
+
+        // Ring buffer trail write. We just overwrite the oldest slot each frame.
+        // trailHead always points to where we'll write next.
+        // After writing, advance the pointer and wrap it around with modulo.
+        for (let m of this.marbles) {
+            m.trail[m.trailHead].x = m.x;
+            m.trail[m.trailHead].y = m.y;
+            m.trailHead = (m.trailHead + 1) % TRAIL_LEN;
+            if (m.trailFill < TRAIL_LEN) m.trailFill++;
+        }
+
+        // ADAPTIVE CONSTRAINT ITERATIONS -- elite feature right here.
+        // Instead of always running 18 passes (wasteful when the net is calm)
+        // or always running 6 (not enough when things get chaotic), we measure
+        // the current maximum stretch across all sticks and scale the iteration
+        // count accordingly. Calm net = 6 passes. Stressed net = 18 passes.
+        // This saves real CPU cycles during idle moments.
+        let maxStress = 0;
+        for (let s of this.sticks) {
+            if (s.torn) continue;
+            const dist = Math.hypot(s.p2.x - s.p1.x, s.p2.y - s.p1.y);
+            const stretch = dist / s.len;
+            if (stretch > maxStress) maxStress = stretch;
+        }
+        const iterations = maxStress > 1.5 ? 18 : maxStress > 1.1 ? 12 : 6;
+
+        // THE CONSTRAINT SOLVER.
+        // For each stick, we calculate how far off its current length is from
+        // its rest length. Then we push both endpoints equally toward the correct
+        // distance. Do this enough times per frame (see iterations above) and
+        // the cloth holds its shape. This is called iterative relaxation and it
+        // is the same algorithm Pixar uses for cloth in their films.
+        for (let i = 0; i < iterations; i++) {
+            for (let s of this.sticks) {
+                if (s.torn) continue;
+                const dx = s.p2.x - s.p1.x, dy = s.p2.y - s.p1.y;
+                const dist = Math.hypot(dx, dy);
+                const stretch = dist / s.len;
+
+                // TEAR CHECK: if a stick is stretched beyond the threshold, it breaks.
+                // We mark it torn so the solver skips it forever after.
+                // Then we dampen the velocity of the freed endpoints so they don't
+                // explode apart at full speed. That 0.35 multiplier is the snap dampener.
+                // Without it torn edges look like they got hit by a rocket. With it
+                // they look like fabric separating. Big difference in feel.
+                if (stretch > tearThreshold) {
+                    s.torn = true;
+                    this.tearCount++;
+                    document.getElementById('tear-count').innerText = `TEARS: ${this.tearCount}`;
+                    this.crackSound();
+                    const dampFactor = 0.35;
+                    if (!s.p1.isStatic) {
+                        const vx1 = (s.p1.x - s.p1.oldX) * dampFactor;
+                        const vy1 = (s.p1.y - s.p1.oldY) * dampFactor;
+                        s.p1.oldX = s.p1.x - vx1;
+                        s.p1.oldY = s.p1.y - vy1;
+                    }
+                    if (!s.p2.isStatic) {
+                        const vx2 = (s.p2.x - s.p2.oldX) * dampFactor;
+                        const vy2 = (s.p2.y - s.p2.oldY) * dampFactor;
+                        s.p2.oldX = s.p2.x - vx2;
+                        s.p2.oldY = s.p2.y - vy2;
+                    }
+                    continue;
+                }
+
+                const diff = (s.len - dist) / dist * 0.5;
+                if (!s.p1.isStatic) { s.p1.x -= dx * diff; s.p1.y -= dy * diff; }
+                if (!s.p2.isStatic) { s.p2.x += dx * diff; s.p2.y += dy * diff; }
+            }
+
+            // Marble vs cloth collision. For every marble, check every cloth node.
+            // If a node is inside the marble's radius, push it out and nudge the
+            // marble back slightly (0.03 = very slight -- we want cloth to feel
+            // light, not like it's made of concrete hitting the marble).
+            for (let m of this.marbles) {
+                for (let p of this.points) {
+                    const dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy);
+                    if (d < m.r && d > 0) {
+                        const nx = dx / d, ny = dy / d, overlap = m.r - d;
+                        if (!p.isStatic) { p.x += nx * overlap; p.y += ny * overlap; }
+                        m.x -= nx * overlap * 0.03;
+                        m.y -= ny * overlap * 0.03;
+                    }
+                }
+            }
+        }
+    }
+
+    render() {
+        // Semi-transparent fill instead of a full clear creates motion blur/trails
+        // on everything. The 0.25 alpha means old frames fade out over ~4 frames.
+        // Cheaper than manually tracking every particle's history and looks great.
+        this.ctx.fillStyle = 'rgba(5, 5, 6, 0.25)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+
+        // Only render the active snow particles (up to settings.snow max).
+        // The rest of the pool exists but stays invisible. Free culling.
+        const activeSnow = this.settings.snow;
+        for (let i = 0; i < activeSnow; i++) {
+            let s = this.snow[i];
+            this.ctx.fillStyle = `hsl(${s.hue}, 80%, 70%)`;
+            this.ctx.beginPath();
+            this.ctx.arc(s.x, s.y, s.w, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        const mode = this.settings.colorMode;
+        const time = Date.now() * 0.002;
+        const totalSticks = this.sticks.length;
+        const now = Date.now();
+
+        // Render each cloth stick as a colored line.
+        // Stress (how stretched the stick is) drives both color brightness
+        // and line width. The more a stick is being pulled, the brighter
+        // and thicker it renders. The cloth literally glows under pressure.
+        this.sticks.forEach((s, i) => {
+            if (s.torn) return; // torn sticks are invisible -- they're gone
+
+            // Fade out fallen pieces after ~3 seconds on the ground
+            const p1Age = (now - s.p1.bornTime) / 1000;
+            const p2Age = (now - s.p2.bornTime) / 1000;
+            if ((s.p1.y >= this.height - 1 && p1Age > 3) || (s.p2.y >= this.height - 1 && p2Age > 3)) {
+                return; // fully faded
+            }
+
+            const dist = Math.hypot(s.p2.x - s.p1.x, s.p2.y - s.p1.y);
+            const stress = Math.min(5, Math.abs(dist - s.len) * 0.8);
+
+            let hue, sat, lit;
+            if (mode === 'psychedelic') {
+                // Hue sweeps based on x position plus time. Creates a wave of color.
+                hue = (time * 50 + (s.p1.x / 10)) % 360;
+                sat = 100; lit = 55 + stress * 10;
+            } else if (mode === 'hyper') {
+                // Hue tied to stick index plus fast time. More chaotic than psychedelic.
+                hue = (time * 100 + i) % 360;
+                sat = 100; lit = 55 + stress * 10;
+            } else if (mode === 'plasma') {
+                // Constrained to 150-210 degrees: green, teal, cyan, blue only.
+                // The sine wave driven by position + time makes it ripple organically.
+                hue = 150 + Math.sin(time * 0.8 + s.p1.x * 0.015 + s.p1.y * 0.01) * 60;
+                sat = 90 + stress * 2;
+                lit = 45 + Math.sin(time * 1.2 + i * 0.05) * 15 + stress * 12;
+            } else if (mode === 'neon') {
+                hue = 120; sat = 100; lit = 50 + stress * 12;
+            } else if (mode === 'roygbv') {
+                // Each stick gets a fixed hue position in the spectrum based on its
+                // index. The result is a static rainbow that stays stable as the cloth moves.
+                hue = (i / totalSticks) * 300;
+                sat = 100; lit = 55 + stress * 10;
+            } else {
+                hue = 120; sat = 100; lit = 55 + stress * 10;
+            }
+
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = `hsl(${hue}, ${sat}%, ${lit}%)`;
+            this.ctx.lineWidth = 1.8 + stress;
+            this.ctx.moveTo(s.p1.x, s.p1.y);
+            this.ctx.lineTo(s.p2.x, s.p2.y);
+            this.ctx.stroke();
+        });
+
+        // Read the trail ring buffer in chronological order.
+        // The oldest frame renders small and transparent, newest renders
+        // large and more opaque. Creates a comet tail effect.
+        this.marbles.forEach(m => {
+            const count = m.trailFill;
+            for (let t = 0; t < count; t++) {
+                const idx = (m.trailHead - count + t + TRAIL_LEN) % TRAIL_LEN;
+                const alpha = (t / count) * 0.35;
+                const r = m.r * (t / count) * 0.7;
+                this.ctx.beginPath();
+                this.ctx.fillStyle = `hsla(${m.hue}, 100%, 60%, ${alpha})`;
+                this.ctx.arc(m.trail[idx].x, m.trail[idx].y, Math.max(1, r), 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        });
+
+        // Draw marbles on top of their trails.
+        // White ring when actively dragging so you always know which one you've got.
+        this.marbles.forEach(m => {
+            this.ctx.beginPath();
+            this.ctx.fillStyle = m.color;
+            this.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+            this.ctx.fill();
+            if (this.mouse.down && this.mouse.target === m) {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 2;
+                this.ctx.arc(m.x, m.y, m.r + 3, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+        });
+    }
+
+    // THE MAIN LOOP.
+    // requestAnimationFrame gives us a timestamp in milliseconds.
+    // We calculate dt (delta time = time since last frame) and feed it
+    // into the fixed timestep accumulator. The while loop drains the
+    // accumulator in fixed 16.67ms chunks. render() fires once per RAF
+    // regardless of how many physics steps just ran. Clean separation
+    // between physics time and render time. This is how real game engines work.
+    loop(t) {
+        const dt = t - this.lastTime;
+        this.lastTime = t;
+
+        if (dt > 0) {
+            this.fpsBuffer.push(1000 / dt);
+            if (this.fpsBuffer.length > 60) this.fpsBuffer.shift();
+            // Only update the FPS display every 5 seconds so it's readable.
+            // Updating every frame makes it flicker too fast to read.
+            if (t - this.fpsLastDisplay > 5000) {
+                const avg = Math.round(this.fpsBuffer.reduce((a, b) => a + b, 0) / this.fpsBuffer.length);
+                document.getElementById('fps').innerText = avg;
+                this.fpsLastDisplay = t;
+            }
+        }
+
+        // Cap dt at 50ms to prevent the "spiral of death."
+        // If the tab gets backgrounded and then refocused, dt could be huge
+        // (like 2000ms) and the accumulator would try to run 120 physics steps
+        // in one frame. That would freeze the browser. The cap limits it to 3 steps max.
+        this.accumulator += Math.min(dt, 50);
+        while (this.accumulator >= this.fixedStep) {
+            this.update();
+            this.accumulator -= this.fixedStep;
+        }
+
+        this.render();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+}
+
+// One line to boot the whole engine. That's it.
+// Everything else is encapsulated inside the class.
+const world = new VerLite(document.getElementById('canvas'));
+</script>
+</body>
+</html>
